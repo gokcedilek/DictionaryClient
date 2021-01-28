@@ -6,11 +6,11 @@
 // use this template or hav all or your classes in this file.
 
 import java.lang.System;
-import java.net.UnknownHostException;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.Arrays;
+import java.util.HashMap;
 
 //
 // This is an implementation of a simplified version of a command
@@ -18,16 +18,11 @@ import java.util.Arrays;
 // -d which turns on debugging output. 
 //
 
+//states: start, open, 
+
 public class CSdict {
 
-	// error codes (incomplete)
-	static final String INVALID_COMMAND = "900 Invalid command";
-	static final String TOO_MANY_OPTIONS = "901 Too many command line options - Only -d is allowed";
-	static final String INVALID_OPTIONS = "902 Invalid command line option - Only -d is allowed";
-	static final String INCORRECT_NUM_ARGS = "903 Incorrect number of arguments";
-	static final String INVALID_ARGS = "904 Invalid argument";
-	static final String CMD_NOT_EXPECTED = "910 Supplied command not expected at this time";
-	static final String CONNECTION_ERROR = "";
+	static HashMap<Integer, String> errors = new HashMap<Integer, String>();
 
 	// dictionary client
 	static DictClient dictClient;
@@ -39,7 +34,63 @@ public class CSdict {
 	private static String command;
 	private static String[] arguments;
 
+	private static enum States {
+		START, OPEN, CMD, CLOSE, QUIT
+	}
+
+	private static States state = States.START;
+
+	static void initializeErrors() {
+		errors.put(900, "900 Invalid command");
+		errors.put(901, "901 Too many command line options - Only -d is allowed");
+		errors.put(902, "902 Invalid command line option - Only -d is allowed");
+		errors.put(903, "903 Incorrect number of arguments");
+		errors.put(904, "904 Invalid argument");
+		errors.put(910, "910 Supplied command not expected at this time");
+		errors.put(920, "920 Control connection to %s on port %s failed to open.");
+		errors.put(925, "925 Control connection I/O error, closing control connection");
+		errors.put(998, "998 Input error while reading commands, terminating");
+		errors.put(999, "999 Processing error. %s.");
+	}
+
+	// ask: can we return 910 for all these cases?
+	static boolean validate(String command) {
+		System.out.println("entered validate with: " + command);
+		switch (command) {
+			case "open":
+				if (state == States.OPEN || state == States.CMD) {
+					System.out.println(errors.get(910));
+					return false;
+				}
+				break;
+			case "dict":
+			case "set":
+			case "define":
+			case "match":
+			case "prefixmatch":
+				if (state == States.CLOSE || state == States.START) {
+					System.out.println(errors.get(910));
+					return false;
+				}
+				break;
+			case "close":
+				if (state == States.QUIT || state == States.START || state == States.CLOSE) {
+					System.out.println(errors.get(910));
+					return false;
+				}
+				break;
+			case "quit":
+				return true;
+			default:
+				System.out.println(errors.get(900));
+				return false;
+		}
+		return true;
+	}
+
 	public static void main(String[] args) {
+		initializeErrors();
+
 		byte cmdString[] = new byte[MAX_LEN];
 		int len;
 		// Verify command line arguments
@@ -53,7 +104,8 @@ public class CSdict {
 				return;
 			}
 		} else if (args.length > PERMITTED_ARGUMENT_COUNT) {
-			System.out.println("901 Too many command line options - Only -d is allowed");
+			// System.out.println("901 Too many command line options - Only -d is allowed");
+			System.out.println(errors.get(901));
 			return;
 		}
 
@@ -75,9 +127,15 @@ public class CSdict {
 
 				arguments = Arrays.copyOfRange(inputs, 1, inputs.length);
 
+				if (!validate(command)) {
+					System.out.print("317dict> ");
+					continue;
+				}
+
 				switch (command) {
 					case "open":
 						cmd_open(arguments);
+						state = States.OPEN;
 						break;
 					case "dict":
 						cmd_dict();
@@ -90,14 +148,10 @@ public class CSdict {
 						break;
 					case "close":
 						// cmd_close();
-						System.out.println("close!");
 						break;
 					case "quit":
 						// cmd_quit();
-						System.out.println("quit!");
 						break;
-					default:
-						System.out.println("unknown command: " + command);
 				}
 				System.out.print("317dict> ");
 			}
@@ -108,20 +162,18 @@ public class CSdict {
 	}
 
 	private static void cmd_open(String[] arguments) {
-		// TODO argument validation
-		if (arguments.length != 2)
-			return; // error handling in this case??
-		String host = arguments[0];
-		int port = Integer.parseInt(arguments[1]);
-		try {
-			dictClient = new DictClient(host, port);
-			dictClient.printInfo();
-		} catch (UnknownHostException e) {
-			System.err.println("UnknownHostException: " + e.getMessage());
-			System.exit(1);
-		} catch (IOException e) {
-			System.err.println("IOException: " + e.getMessage());
-			System.exit(1);
+		if (arguments.length != 2) {
+			System.err.println(errors.get(903));
+		} else {
+			String host = arguments[0];
+			int port = Integer.parseInt(arguments[1]);
+			try {
+				dictClient = new DictClient(host, port);
+				dictClient.printInfo();
+			} catch (Exception e) {
+				String error = String.format(errors.get(920), host, arguments[1]);
+				System.err.println(error);
+			}
 		}
 	}
 
