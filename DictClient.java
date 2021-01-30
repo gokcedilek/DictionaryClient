@@ -36,30 +36,79 @@ public class DictClient {
     return this.dictToUse;
   }
 
-  public void retrieveWordDefn(String word) throws IOException {
-    // define english hello
+  public void retrieveDefinitions(String word) throws IOException {
     String cmd = "define " + this.dictToUse + " " + word;
-    System.out.println("cmd is: " + cmd);
     socketOut.println(cmd);
-    int count = 0;
     String fromServer;
     fromServer = socketIn.readLine();
-    while (!((fromServer.equals("250 ok")) || (fromServer.equals("552 no match")))) {
-      System.out.println("line " + count + ": " + fromServer);
-      count++;
+    while (!((fromServer.contains("250 ok")) || (fromServer.contains("552 no match")))) {
+      if (fromServer.contains("151")) {
+        String name = fromServer.split(" ")[2];
+        System.out.println(name);
+        fromServer = socketIn.readLine();
+        // String definition = "";
+        while (!(fromServer.equals("."))) {
+          System.out.println(fromServer);
+          fromServer = socketIn.readLine();
+          // definition += (fromServer + "\n");
+        }
+        // System.out.println(definition);
+        fromServer = socketIn.readLine();
+      } else {
+        fromServer = socketIn.readLine();
+      }
+    }
+    if (fromServer.contains("552 no match")) {
+      System.out.println("**No definition found**");
+      this.retrieveMatchesDefault(word);
+    }
+  }
+
+  public void retrieveMatchesExact(String word) throws IOException {
+    String cmd = "MATCH " + this.dictToUse + " exact " + word;
+    socketOut.println(cmd);
+    String fromServer;
+    fromServer = socketIn.readLine();
+
+    while (!((fromServer.contains("250 ok")) || (fromServer.contains("552 no match")))) {
+      if ((!fromServer.contains("152")) && (!fromServer.equals(".")) && (!fromServer.contains("220"))) {
+        System.out.println(fromServer);
+      }
       fromServer = socketIn.readLine();
     }
-    // while (!(fromServer = socketIn.readLine()).equals(".")) {
-    // System.out.println(fromServer);
-    // }
-    System.out.println("we are done!!!!!!!!!");
+
+    if (fromServer.contains("552 no match")) {
+      System.out.println("****No matching word(s) found****");
+    }
   }
 
-  public void close() {
-    // this.socket.close();
+  public void retrieveMatchesDefault(String word) throws IOException {
+    String cmd = "MATCH " + this.dictToUse + " . " + word;
+    socketOut.println(cmd);
+    String fromServer;
+    fromServer = socketIn.readLine();
+
+    while (!((fromServer.contains("250 ok")) && (fromServer.contains("552 no match"))
+        && (!fromServer.contains("220")))) {
+      if (!fromServer.contains("152") || !fromServer.contains(".")) {
+        System.out.println(fromServer);
+      }
+      fromServer = socketIn.readLine();
+    }
+
+    if (fromServer.contains("552 no match")) {
+      System.out.println("***No matches found***");
+    }
   }
 
-  // only for testing
+  public void close() throws IOException {
+    this.dictSocket.close();
+  }
+
+  public boolean isClosed() {
+    return this.dictSocket.isClosed();
+  }
+
   public void printInfo() {
     System.out.println(
         "localport: " + this.dictSocket.getLocalPort() + " port: " + this.dictSocket.getPort() + " local address: "

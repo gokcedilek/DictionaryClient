@@ -135,7 +135,6 @@ public class CSdict {
 				switch (command) {
 					case "open":
 						cmd_open(arguments);
-						state = States.OPEN;
 						break;
 					case "dict":
 						cmd_dict();
@@ -145,6 +144,9 @@ public class CSdict {
 						break;
 					case "define":
 						cmd_define(arguments);
+						break;
+					case "match":
+						cmd_match(arguments);
 						break;
 					case "close":
 						// cmd_close();
@@ -170,6 +172,7 @@ public class CSdict {
 			try {
 				dictClient = new DictClient(host, port);
 				dictClient.printInfo();
+				state = States.OPEN;
 			} catch (Exception e) {
 				String error = String.format(errors.get(920), host, arguments[1]);
 				System.err.println(error);
@@ -188,11 +191,13 @@ public class CSdict {
 	}
 
 	private static void cmd_set(String[] arguments) {
-		if (arguments.length != 1)
-			return;
-		String dict = arguments[0];
-		dictClient.setDictToUse(dict);
-		System.out.println("dict is set to: " + dictClient.getDictToUse());
+		if (arguments.length != 1) {
+			System.err.println(errors.get(903));
+		} else {
+			String dict = arguments[0];
+			dictClient.setDictToUse(dict);
+			System.out.println("dict is set to: " + dictClient.getDictToUse());
+		}
 	}
 
 	private static void cmd_define(String[] arguments) {
@@ -201,12 +206,24 @@ public class CSdict {
 		String word = arguments[0];
 		System.out.println("word is: " + word);
 		try {
-			dictClient.retrieveWordDefn(word);
+			dictClient.retrieveDefinitions(word);
 		} catch (IOException e) {
 			System.err.println("IOException: " + e.getMessage());
 			System.exit(1);
 		}
-		System.out.println("Done!");
+	}
+
+	private static void cmd_match(String[] arguments) {
+		if (arguments.length != 1)
+			return;
+		String word = arguments[0];
+		System.out.println("word is: " + word);
+		try {
+			dictClient.retrieveMatchesExact(word);
+		} catch (IOException e) {
+			System.err.println("IOException: " + e.getMessage());
+			System.exit(1);
+		}
 	}
 
 	// private static void cmd_close() {
