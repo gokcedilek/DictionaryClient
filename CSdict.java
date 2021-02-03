@@ -53,8 +53,8 @@ public class CSdict {
 		errors.put(999, "999 Processing error. %s.");
 	}
 
-	// ask: can we return 910 for all these cases?
-	static boolean validate(String command) {
+	// ASK: would we return 910 for all the cases (except default)?
+	static boolean validateCommand(String command) {
 		System.out.println("entered validate with: " + command);
 		switch (command) {
 			case "open":
@@ -127,7 +127,7 @@ public class CSdict {
 
 				arguments = Arrays.copyOfRange(inputs, 1, inputs.length);
 
-				if (!validate(command)) {
+				if (!validateCommand(command)) {
 					System.out.print("317dict> ");
 					continue;
 				}
@@ -182,7 +182,10 @@ public class CSdict {
 
 	private static void cmd_dict() {
 		try {
-			dictClient.retrieveDictList();
+			if (debugOn) {
+				System.out.println("--> " + "dict");
+			}
+			dictClient.retrieveDictList(debugOn);
 		} catch (IOException e) {
 			System.err.println("IOException: " + e.getMessage());
 			System.exit(1);

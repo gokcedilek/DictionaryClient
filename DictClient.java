@@ -2,29 +2,47 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
+import java.net.InetSocketAddress;
 import java.net.Socket;
-import java.net.UnknownHostException;
 
 public class DictClient {
   private Socket dictSocket;
   private BufferedReader socketIn;
   private PrintWriter socketOut;
   private String dictToUse;
+  private int timeout = 30000;
+  // private int timeout = 1;
 
-  public DictClient(String host, int port) throws UnknownHostException, IOException {
+  public DictClient(String host, int port) throws Exception {
     this.dictSocket = new Socket(host, port);
+    // this.dictSocket = new Socket();
+    // this.dictSocket.connect(new InetSocketAddress(host, port), timeout);
     this.socketIn = new BufferedReader(new InputStreamReader(dictSocket.getInputStream()));
     this.socketOut = new PrintWriter(dictSocket.getOutputStream(), true);
     this.dictToUse = "*";
   }
 
-  public void retrieveDictList() throws IOException {
+  public void retrieveDictList(boolean debugOn) throws IOException {
     socketOut.println("show db");
+    // String fromServer = socketIn.readLine();
     String fromServer;
-    // check if there's no other input
     while (!(fromServer = socketIn.readLine()).equals(".")) {
       System.out.println(fromServer);
     }
+
+    // while (!(fromServer.contains("250 ok")) && !(fromServer.contains("554"))) {
+    // System.out.println("server: " + fromServer);
+    // fromServer = socketIn.readLine();
+    // }
+    // while (!((fromServer.contains("250 ok")) && (fromServer.contains("554")))) {
+    // if (debugOn && (fromServer.contains("110"))) {
+    // System.out.println("<-- " + fromServer);
+    // } else {
+    // System.out.println(fromServer);
+    // }
+    // fromServer = socketIn.readLine();
+    // }
+    System.out.println("<-- " + fromServer);
   }
 
   public void setDictToUse(String dict) {
