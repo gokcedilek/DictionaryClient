@@ -28,10 +28,10 @@ information to this file and then commit and push this file.
 
 
 STUDENT  1
-Name :
-St. No:
-Unix Id :
-Email:
+Name : Gokce Dilek
+St. No: 12563300
+Unix Id : m1w1b
+Email: gokcedilek99@gmail.com
 
 
 STUDENT  2
