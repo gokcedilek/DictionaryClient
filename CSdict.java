@@ -18,8 +18,6 @@ import java.util.HashMap;
 // -d which turns on debugging output. 
 //
 
-//states: start, open, 
-
 public class CSdict {
 
 	static HashMap<Integer, String> errors = new HashMap<Integer, String>();
@@ -35,10 +33,10 @@ public class CSdict {
 	private static String[] arguments;
 
 	private static enum States {
-		START, OPEN, CMD, CLOSE, QUIT
+		CLOSED, OPEN
 	}
 
-	private static States state = States.START;
+	private static States state = States.CLOSED;
 
 	static void initializeErrors() {
 		errors.put(900, "900 Invalid command");
@@ -53,13 +51,11 @@ public class CSdict {
 		errors.put(999, "999 Processing error. %s.");
 	}
 
-	// ASK: would we return 910 for all the cases (except default)?
 	static boolean validateCommand(String command) {
-		System.out.println("entered validate with: " + command);
 		switch (command) {
 			case "open":
-				if (state == States.OPEN || state == States.CMD) {
-					System.out.println(errors.get(910));
+				if (state == States.OPEN) {
+					System.err.println(errors.get(910));
 					return false;
 				}
 				break;
@@ -68,21 +64,21 @@ public class CSdict {
 			case "define":
 			case "match":
 			case "prefixmatch":
-				if (state == States.CLOSE || state == States.START) {
-					System.out.println(errors.get(910));
+				if (state == States.CLOSED) {
+					System.err.println(errors.get(910));
 					return false;
 				}
 				break;
 			case "close":
-				if (state == States.QUIT || state == States.START || state == States.CLOSE) {
-					System.out.println(errors.get(910));
+				if (state == States.CLOSED) {
+					System.err.println(errors.get(910));
 					return false;
 				}
 				break;
 			case "quit":
 				return true;
 			default:
-				System.out.println(errors.get(900));
+				System.err.println(errors.get(900));
 				return false;
 		}
 		return true;
@@ -91,8 +87,6 @@ public class CSdict {
 	public static void main(String[] args) {
 		initializeErrors();
 
-		byte cmdString[] = new byte[MAX_LEN];
-		int len;
 		// Verify command line arguments
 
 		if (args.length == PERMITTED_ARGUMENT_COUNT) {
@@ -100,12 +94,11 @@ public class CSdict {
 			if (debugOn) {
 				System.out.println("Debugging output enabled");
 			} else {
-				System.out.println("902 Invalid command line option - Only -d is allowed");
+				System.err.println(errors.get(902));
 				return;
 			}
 		} else if (args.length > PERMITTED_ARGUMENT_COUNT) {
-			// System.out.println("901 Too many command line options - Only -d is allowed");
-			System.out.println(errors.get(901));
+			System.err.println(errors.get(901));
 			return;
 		}
 
@@ -132,12 +125,16 @@ public class CSdict {
 					continue;
 				}
 
+				if (debugOn) {
+					System.out.println("--> " + userInput);
+				}
+
 				switch (command) {
 					case "open":
 						cmd_open(arguments);
 						break;
 					case "dict":
-						cmd_dict();
+						cmd_dict(arguments);
 						break;
 					case "set":
 						cmd_set(arguments);
@@ -146,19 +143,22 @@ public class CSdict {
 						cmd_define(arguments);
 						break;
 					case "match":
-						cmd_match(arguments);
+						cmd_match(arguments, "exact");
+						break;
+					case "prefixmatch":
+						cmd_match(arguments, "prefix");
 						break;
 					case "close":
-						// cmd_close();
+						cmd_close(arguments);
 						break;
 					case "quit":
-						// cmd_quit();
+						cmd_quit(arguments);
 						break;
 				}
 				System.out.print("317dict> ");
 			}
 		} catch (IOException e) {
-			System.err.println("IOException: " + e.getMessage());
+			System.err.println(errors.get(998));
 			System.exit(1);
 		}
 	}
@@ -168,11 +168,12 @@ public class CSdict {
 			System.err.println(errors.get(903));
 		} else {
 			String host = arguments[0];
-			int port = Integer.parseInt(arguments[1]);
 			try {
-				dictClient = new DictClient(host, port);
-				dictClient.printInfo();
+				int port = Integer.parseInt(arguments[1]);
+				dictClient = new DictClient(host, port, debugOn);
 				state = States.OPEN;
+			} catch (NumberFormatException e) {
+				System.err.println(errors.get(904));
 			} catch (Exception e) {
 				String error = String.format(errors.get(920), host, arguments[1]);
 				System.err.println(error);
@@ -180,17 +181,17 @@ public class CSdict {
 		}
 	}
 
-	private static void cmd_dict() {
+	private static void cmd_dict(String[] arguments) {
+		if (arguments.length != 0) {
+			System.err.println(errors.get(903));
+			return;
+		}
 		try {
-			if (debugOn) {
-				System.out.println("--> " + "dict");
-			}
 			dictClient.retrieveDictList(debugOn);
 		} catch (IOException e) {
-			System.err.println("IOException: " + e.getMessage());
-			System.exit(1);
+			System.err.println(errors.get(925));
+			cmd_close(arguments);
 		}
-		System.out.println("Done!");
 	}
 
 	private static void cmd_set(String[] arguments) {
@@ -199,42 +200,54 @@ public class CSdict {
 		} else {
 			String dict = arguments[0];
 			dictClient.setDictToUse(dict);
-			System.out.println("dict is set to: " + dictClient.getDictToUse());
 		}
 	}
 
 	private static void cmd_define(String[] arguments) {
-		if (arguments.length != 1)
+		if (arguments.length != 1) {
+			System.err.println(errors.get(903));
 			return;
+		}
 		String word = arguments[0];
-		System.out.println("word is: " + word);
 		try {
-			dictClient.retrieveDefinitions(word);
+			dictClient.retrieveDefinitions(word, debugOn);
 		} catch (IOException e) {
-			System.err.println("IOException: " + e.getMessage());
-			System.exit(1);
+			System.err.println(errors.get(925));
+			cmd_close(arguments);
 		}
 	}
 
-	private static void cmd_match(String[] arguments) {
-		if (arguments.length != 1)
+	private static void cmd_match(String[] arguments, String strategy) {
+		if (arguments.length != 1) {
+			System.err.println(errors.get(903));
 			return;
+		}
 		String word = arguments[0];
-		System.out.println("word is: " + word);
 		try {
-			dictClient.retrieveMatchesExact(word);
+			dictClient.retrieveMatches(word, debugOn, strategy);
 		} catch (IOException e) {
-			System.err.println("IOException: " + e.getMessage());
-			System.exit(1);
+			System.err.println(errors.get(925));
+			cmd_close(arguments);
 		}
 	}
 
-	// private static void cmd_close() {
-	// dictClient.close();
-	// }
+	private static void cmd_close(String[] arguments) {
+		if (arguments.length != 0) {
+			System.err.println(errors.get(903));
+			return;
+		}
+		try {
+			dictClient.close(debugOn);
+			state = States.CLOSED;
+		} catch (IOException e) {
+			System.err.println(String.format(errors.get(999), e.getMessage()));
+		}
+	}
 
-	// private static void cmd_quit() {
-	// dictClient.close();
-	// System.exit(0);
-	// }
+	private static void cmd_quit(String[] arguments) {
+		if (state == States.OPEN) {
+			cmd_close(arguments);
+		}
+		System.exit(0);
+	}
 }
