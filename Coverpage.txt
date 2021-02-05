@@ -35,8 +35,8 @@ Email:
 
 
 STUDENT  2
-Name :
-St. No:
-Unix Id :
-Email:
+Name : Aliya Mohamed
+St. No: 88025101
+Unix Id : b7i2b
+Email: aliyamohamed13@gmail.com
 
