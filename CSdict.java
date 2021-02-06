@@ -20,9 +20,10 @@ import java.util.HashMap;
 
 public class CSdict {
 
+	/* map from error codes to messages */
 	static HashMap<Integer, String> errors = new HashMap<Integer, String>();
 
-	// dictionary client
+	/* dictionary client */
 	static DictClient dictClient;
 
 	static final int MAX_LEN = 255;
@@ -32,12 +33,18 @@ public class CSdict {
 	private static String command;
 	private static String[] arguments;
 
+	/*
+	 * client commands are categorized into two states: socket connection is open /
+	 * socket connection is closed
+	 */
 	private static enum States {
 		CLOSED, OPEN
 	}
 
+	/* the initial program state is socket is closed */
 	private static States state = States.CLOSED;
 
+	/* set program errors */
 	static void initializeErrors() {
 		errors.put(900, "900 Invalid command");
 		errors.put(901, "901 Too many command line options - Only -d is allowed");
@@ -51,6 +58,11 @@ public class CSdict {
 		errors.put(999, "999 Processing error. %s.");
 	}
 
+	/*
+	 * validate the command entered by the user by i) if this command is a valid
+	 * command the client can process, ii) checking if this command is allowed in
+	 * the current program state
+	 */
 	static boolean validateCommand(String command) {
 		switch (command) {
 			case "open":
@@ -85,10 +97,11 @@ public class CSdict {
 	}
 
 	public static void main(String[] args) {
+
+		/* set program errors */
 		initializeErrors();
 
-		// Verify command line arguments
-
+		/* verify command line arguments */
 		if (args.length == PERMITTED_ARGUMENT_COUNT) {
 			debugOn = args[0].equals("-d");
 			if (debugOn) {
@@ -102,33 +115,46 @@ public class CSdict {
 			return;
 		}
 
-		// Example code to read command line input and extract arguments.
-
+		/* read command line input and extract arguments */
 		try {
 			String userInput;
 			BufferedReader stdIn = new BufferedReader(new InputStreamReader(System.in));
+
+			/* initial prompt */
 			System.out.print("317dict> ");
+
 			while ((userInput = stdIn.readLine()) != null) {
+				/* split input into words */
 				String[] inputs = userInput.trim().split("( |\t)+");
 
+				/* the command is the first word of input */
 				command = inputs[0].toLowerCase().trim();
 
+				/* empty lines and lines starting with '#' are ignored */
 				if (command.equals("") || command.equals("#") || command.charAt(0) == '#') {
 					System.out.print("317dict> ");
 					continue;
 				}
 
+				/* arguments follow the command */
 				arguments = Arrays.copyOfRange(inputs, 1, inputs.length);
 
+				/* check if the input command is valid */
 				if (!validateCommand(command)) {
 					System.out.print("317dict> ");
 					continue;
 				}
 
+				/* print client input if debug mode is on */
 				if (debugOn) {
 					System.out.println("--> " + userInput);
 				}
 
+				/* handle the input */
+				/*
+				 * NOTE we do not need a default case in this switch because invalid commands
+				 * would have been caught in validateCommand above
+				 */
 				switch (command) {
 					case "open":
 						cmd_open(arguments);
@@ -163,6 +189,10 @@ public class CSdict {
 		}
 	}
 
+	/*
+	 * if the arguments are valid, open a socket connection to the specified server
+	 * and port and set the state to open
+	 */
 	private static void cmd_open(String[] arguments) {
 		if (arguments.length != 2) {
 			System.err.println(errors.get(903));
@@ -181,6 +211,7 @@ public class CSdict {
 		}
 	}
 
+	/* retrieve a list of dictionaries that the server supports */
 	private static void cmd_dict(String[] arguments) {
 		if (arguments.length != 0) {
 			System.err.println(errors.get(903));
@@ -194,6 +225,7 @@ public class CSdict {
 		}
 	}
 
+	/* set the dictionary to use */
 	private static void cmd_set(String[] arguments) {
 		if (arguments.length != 1) {
 			System.err.println(errors.get(903));
@@ -203,6 +235,7 @@ public class CSdict {
 		}
 	}
 
+	/* retrieve definitions of a word */
 	private static void cmd_define(String[] arguments) {
 		if (arguments.length != 1) {
 			System.err.println(errors.get(903));
@@ -217,6 +250,7 @@ public class CSdict {
 		}
 	}
 
+	/* retrieve matches of a word based on a given strategy */
 	private static void cmd_match(String[] arguments, String strategy) {
 		if (arguments.length != 1) {
 			System.err.println(errors.get(903));
@@ -231,6 +265,7 @@ public class CSdict {
 		}
 	}
 
+	/* close the socket connection */
 	private static void cmd_close(String[] arguments) {
 		if (arguments.length != 0) {
 			System.err.println(errors.get(903));
@@ -244,6 +279,7 @@ public class CSdict {
 		}
 	}
 
+	/* close the socket connection if open and exit the program */
 	private static void cmd_quit(String[] arguments) {
 		if (state == States.OPEN) {
 			cmd_close(arguments);
