@@ -1,22 +1,9 @@
-
-// You can use this file as a starting point for your dictionary client
-// The file contains the code for command line parsing and it also
-// illustrates how to read and partially parse the input typed by the user. 
-// Although your main class has to be in this file, there is no requirement that you
-// use this template or hav all or your classes in this file.
-
 import java.lang.System;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.Arrays;
 import java.util.HashMap;
-
-//
-// This is an implementation of a simplified version of a command
-// line dictionary client. The only argument the program takes is
-// -d which turns on debugging output. 
-//
 
 public class CSdict {
 

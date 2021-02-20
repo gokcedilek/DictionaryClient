@@ -3,7 +3,6 @@ CSdict.jar: CSdict.java
 	javac CSdict.java
 	jar cvfe CSdict.jar CSdict *.class
 
-
 run: CSdict.jar
 	java -jar CSdict.jar
 
